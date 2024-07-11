@@ -4,7 +4,7 @@
 extern crate rocket;
 
 use dotenv::dotenv;
-use mongodb::{options::ClientOptions, Client};
+use mongodb::{bson::doc, options::ClientOptions, Client};
 use rocket::fairing::AdHoc;
 use rocket::serde::{json::Json, Deserialize, Serialize};
 use rocket::State;
