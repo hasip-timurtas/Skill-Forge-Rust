@@ -1,5 +1,5 @@
 use dotenv::dotenv;
-use mongodb::{bson::doc, options::ClientOptions, Client};
+use mongodb::{bson::doc, bson::Bson, options::ClientOptions, Client};
 use rocket::fairing::AdHoc;
 use rocket::serde::{json::Json, Deserialize, Serialize};
 use rocket::State;
@@ -20,6 +20,15 @@ pub struct LoginRequest {
     pub password: String,
 }
 
+#[derive(Debug, Deserialize)]
+pub struct RegisterRequest {
+    pub email: String,
+    pub password: String,
+    pub name: String,
+    pub age: i32,
+    pub eth_address: String,
+}
+
 #[post("/login", data = "<login_request>")]
 pub async fn login(
     login_request: Json<LoginRequest>,
@@ -36,6 +45,38 @@ pub async fn login(
         Ok(Some(user)) => Some(Json(user)),
         Ok(None) => None,
         Err(_) => None,
+    }
+}
+
+#[post("/register", data = "<register_request>")]
+pub async fn register(
+    register_request: Json<RegisterRequest>,
+    client: &State<Client>,
+) -> Result<Json<User>, &'static str> {
+    let users_collection = client.database("user_db").collection::<User>("users");
+
+    let new_user = User {
+        email: register_request.email.clone(),
+        password: register_request.password.clone(),
+        name: register_request.name.clone(),
+        age: register_request.age,
+        eth_address: register_request.eth_address.clone(),
+    };
+
+    let filter = doc! {
+        "email": &register_request.email,
+    };
+
+    match users_collection.find_one(filter, None).await {
+        Ok(Some(_)) => Err("User already exists"),
+        Ok(None) => {
+            users_collection
+                .insert_one(new_user.clone(), None)
+                .await
+                .expect("Failed to insert new user");
+            Ok(Json(new_user))
+        }
+        Err(_) => Err("Failed to query database"),
     }
 }
 
@@ -69,5 +110,5 @@ pub fn rocket() -> rocket::Rocket<rocket::Build> {
             let client = init_mongo().await;
             rocket.manage(client)
         }))
-        .mount("/", routes![index, login])
+        .mount("/", routes![index, login, register])
 }
