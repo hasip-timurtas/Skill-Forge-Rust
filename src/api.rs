@@ -1,11 +1,11 @@
 use dotenv::dotenv;
-use mongodb::{bson::doc, bson::Bson, options::ClientOptions, Client};
+use mongodb::{bson::doc, options::ClientOptions, Client};
 use rocket::fairing::AdHoc;
 use rocket::serde::{json::Json, Deserialize, Serialize};
 use rocket::State;
 use std::env;
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct User {
     pub email: String,
     pub password: String,
