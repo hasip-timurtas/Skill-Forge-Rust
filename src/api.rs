@@ -1,6 +1,7 @@
 use dotenv::dotenv;
 use mongodb::{bson::doc, options::ClientOptions, Client};
 use rocket::fairing::AdHoc;
+use rocket::response::status::{Conflict, Unauthorized};
 use rocket::serde::{json::Json, Deserialize, Serialize};
 use rocket::State;
 use std::env;
@@ -33,8 +34,8 @@ pub struct RegisterRequest {
 pub async fn login(
     login_request: Json<LoginRequest>,
     client: &State<Client>,
-) -> Option<Json<User>> {
-    let users_collection = client.database("user_db").collection::<User>("users");
+) -> Result<Json<User>, Unauthorized<String>> {
+    let users_collection = client.database("SkillForge").collection::<User>("users");
 
     let filter = doc! {
         "email": &login_request.email,
@@ -42,9 +43,9 @@ pub async fn login(
     };
 
     match users_collection.find_one(filter, None).await {
-        Ok(Some(user)) => Some(Json(user)),
-        Ok(None) => None,
-        Err(_) => None,
+        Ok(Some(user)) => Ok(Json(user)),
+        Ok(None) => Err(Unauthorized("Invalid email or password".to_string())),
+        Err(_) => Err(Unauthorized("Database error".to_string())),
     }
 }
 
@@ -52,8 +53,8 @@ pub async fn login(
 pub async fn register(
     register_request: Json<RegisterRequest>,
     client: &State<Client>,
-) -> Result<Json<User>, &'static str> {
-    let users_collection = client.database("user_db").collection::<User>("users");
+) -> Result<Json<User>, Conflict<&'static str>> {
+    let users_collection = client.database("SkillForge").collection::<User>("users");
 
     let new_user = User {
         email: register_request.email.clone(),
@@ -68,7 +69,7 @@ pub async fn register(
     };
 
     match users_collection.find_one(filter, None).await {
-        Ok(Some(_)) => Err("User already exists"),
+        Ok(Some(_)) => Err(Conflict("User already exists")),
         Ok(None) => {
             users_collection
                 .insert_one(new_user.clone(), None)
@@ -76,7 +77,7 @@ pub async fn register(
                 .expect("Failed to insert new user");
             Ok(Json(new_user))
         }
-        Err(_) => Err("Failed to query database"),
+        Err(_) => Err(Conflict("Failed to query database")),
     }
 }
 
