@@ -1,3 +1,4 @@
+use rand::Rng;
 use rocket::http::Status;
 use rocket::local::asynchronous::Client;
 use rocket::serde::json::json;
@@ -8,10 +9,15 @@ async fn test_register_success() {
     let client = Client::tracked(rocket())
         .await
         .expect("valid rocket instance");
+
+    // Rastgele bir e-posta adresi oluşturun
+    let random_number: u32 = rand::thread_rng().gen_range(1000..9999);
+    let email = format!("new_user{}@example.com", random_number);
+
     let response = client
         .post("/register")
         .json(&json!({
-            "email": "new_user6@example.com",
+            "email": email,
             "password": "newpassword",
             "name": "New User",
             "age": 25,
@@ -22,9 +28,8 @@ async fn test_register_success() {
 
     assert_eq!(response.status(), Status::Ok);
     let user: User = response.into_json().await.expect("valid user");
-    assert_eq!(user.email, "new_user6@example.com");
+    assert_eq!(user.email, email);
 }
-
 #[rocket::async_test]
 async fn test_register_existing_user() {
     let client = Client::tracked(rocket())
