@@ -47,8 +47,20 @@ pub fn index() -> &'static str {
 pub async fn init_mongo() -> Client {
     dotenv().ok();
     let mongodb_uri = env::var("MONGODB_URI").expect("MONGODB_URI must be set in .env");
-    let client_options = ClientOptions::parse(&mongodb_uri).await.unwrap();
-    Client::with_options(client_options).unwrap()
+    let client_options = ClientOptions::parse(&mongodb_uri)
+        .await
+        .expect("Failed to parse MongoDB URI");
+    let client = Client::with_options(client_options).expect("Failed to initialize MongoDB client");
+
+    // Check MongoDB connection
+    client
+        .database("user_db")
+        .run_command(doc! {"ping": 1}, None)
+        .await
+        .expect("Failed to ping MongoDB");
+    println!("MongoDB connection successful");
+
+    client
 }
 
 pub fn rocket() -> rocket::Rocket<rocket::Build> {
