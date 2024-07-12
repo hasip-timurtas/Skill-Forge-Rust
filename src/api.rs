@@ -34,7 +34,7 @@ pub struct RegisterRequest {
 pub async fn login(
     login_request: Json<LoginRequest>,
     client: &State<Client>,
-) -> Result<Json<User>, Unauthorized<String>> {
+) -> Result<Json<User>, Unauthorized<&'static str>> {
     let users_collection = client.database("SkillForge").collection::<User>("users");
 
     let filter = doc! {
@@ -44,8 +44,8 @@ pub async fn login(
 
     match users_collection.find_one(filter, None).await {
         Ok(Some(user)) => Ok(Json(user)),
-        Ok(None) => Err(Unauthorized("Invalid email or password".to_string())),
-        Err(_) => Err(Unauthorized("Database error".to_string())),
+        Ok(None) => Err(Unauthorized("Invalid email or password")),
+        Err(_) => Err(Unauthorized("Database error")),
     }
 }
 
