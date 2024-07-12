@@ -38,17 +38,17 @@ This repository contains the codebase for the SkillForge application. It leverag
 
 To run the application, use the following command:
 
-    ```sh
-    cargo run
-    ```
+```sh
+cargo run
+```
 
 ### Testing
 
 To run the tests, use the following command:
 
-    ```sh
-    cargo test
-    ```
+```sh
+cargo test
+```
 
 ## Configuration
 
