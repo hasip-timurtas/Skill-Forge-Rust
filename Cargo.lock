@@ -2208,6 +2208,7 @@ name = "user_login_api"
 version = "0.1.0"
 dependencies = [
  "dotenv",
+ "md-5",
  "mongodb",
  "rand",
  "rocket",
