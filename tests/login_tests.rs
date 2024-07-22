@@ -55,15 +55,41 @@ async fn test_login_success() {
     let client = Client::tracked(rocket())
         .await
         .expect("valid rocket instance");
-    let response = client
-        .post("/login")
-        .json(&json!({"email": "test@example.com", "password": "password123"}))
+
+    // Rastgele bir e-posta adresi oluşturun
+    let random_number: u32 = rand::thread_rng().gen_range(1000..9999);
+    let email = format!("new_user{}@example.com", random_number);
+
+    // İlk olarak kullanıcıyı kaydedelim
+    let register_response = client
+        .post("/register")
+        .json(&json!({
+            "email": &email,
+            "password": "password123",
+            "name": "Test User",
+            "age": 30,
+            "eth_address": "0x1234567890abcdef"
+        }))
         .dispatch()
         .await;
 
-    assert_eq!(response.status(), Status::Ok);
-    let user: User = response.into_json().await.expect("valid user");
-    assert_eq!(user.email, "test@example.com");
+    assert_eq!(register_response.status(), Status::Ok);
+    let user: User = register_response.into_json().await.expect("valid user");
+    assert_eq!(user.email, email);
+
+    // Şimdi giriş yapalım
+    let login_response = client
+        .post("/login")
+        .json(&json!({
+            "email": &email,
+            "password": "password123"
+        }))
+        .dispatch()
+        .await;
+
+    assert_eq!(login_response.status(), Status::Ok);
+    let logged_in_user: User = login_response.into_json().await.expect("valid user");
+    assert_eq!(logged_in_user.email, email);
 }
 
 #[rocket::async_test]

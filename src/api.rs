@@ -1,5 +1,8 @@
 use dotenv::dotenv;
+use md5::{Digest, Md5};
 use mongodb::{bson::doc, options::ClientOptions, Client};
+use rand::thread_rng; // ThreadRng kullanımı için ekleyin
+use rand::Rng;
 use rocket::fairing::AdHoc;
 use rocket::response::status::{Conflict, Unauthorized};
 use rocket::serde::{json::Json, Deserialize, Serialize};
@@ -13,6 +16,7 @@ pub struct User {
     pub name: String,
     pub age: i32,
     pub eth_address: String,
+    pub salt: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -39,11 +43,22 @@ pub async fn login(
 
     let filter = doc! {
         "email": &login_request.email,
-        "password": &login_request.password,
     };
 
     match users_collection.find_one(filter, None).await {
-        Ok(Some(user)) => Ok(Json(user)),
+        Ok(Some(user)) => {
+            let salt_str = &user.salt;
+            let salted_password = format!("{}{}", login_request.password, salt_str);
+            let mut hasher = Md5::new();
+            hasher.update(salted_password);
+            let hashed_password = format!("{:x}", hasher.finalize());
+
+            if hashed_password == user.password {
+                Ok(Json(user))
+            } else {
+                Err(Unauthorized("Invalid email or password"))
+            }
+        }
         Ok(None) => Err(Unauthorized("Invalid email or password")),
         Err(_) => Err(Unauthorized("Database error")),
     }
@@ -56,12 +71,23 @@ pub async fn register(
 ) -> Result<Json<User>, Conflict<&'static str>> {
     let users_collection = client.database("SkillForge").collection::<User>("users");
 
+    // Generate a random salt
+    let salt: u32 = thread_rng().gen();
+    let salt_str = salt.to_string();
+
+    // Hash the password with the salt
+    let salted_password = format!("{}{}", register_request.password, salt_str);
+    let mut hasher = Md5::new();
+    hasher.update(salted_password);
+    let hashed_password = format!("{:x}", hasher.finalize());
+
     let new_user = User {
         email: register_request.email.clone(),
-        password: register_request.password.clone(),
+        password: hashed_password,
         name: register_request.name.clone(),
         age: register_request.age,
         eth_address: register_request.eth_address.clone(),
+        salt: salt_str, // Save the salt
     };
 
     let filter = doc! {
@@ -71,6 +97,7 @@ pub async fn register(
     match users_collection.find_one(filter, None).await {
         Ok(Some(_)) => Err(Conflict("User already exists")),
         Ok(None) => {
+            // Store the user with the hashed password and salt
             users_collection
                 .insert_one(new_user.clone(), None)
                 .await
