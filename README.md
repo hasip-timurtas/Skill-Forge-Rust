@@ -1,6 +1,6 @@
 # SkillForge
 
-**SkillForge** is an interactive platform designed to help users practice and enhance their skills through solving various questions and problems. This project is developed in Rust, focusing on high performance and reliability.
+**SkillForge** is an interactive platform designed to help users practice and enhance their skills through solving various questions and problems. This project is developed in Rust, focusing on high performance and reliability. The project is ongoing.
 
 ## Description
 
