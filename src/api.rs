@@ -34,6 +34,14 @@ pub struct RegisterRequest {
     pub eth_address: String,
 }
 
+/// Handles user login.
+///
+/// Verifies the user's email and password. If the credentials are correct,
+/// returns the user data. Otherwise, returns an unauthorized error.
+///
+/// @param {Json<LoginRequest>} login_request - The login request data.
+/// @param {State<Client>} client - The MongoDB client state.
+/// @returns {Result<Json<User>, Unauthorized<&'static str>>} The user data or an unauthorized error.
 #[post("/login", data = "<login_request>")]
 pub async fn login(
     login_request: Json<LoginRequest>,
@@ -64,6 +72,15 @@ pub async fn login(
     }
 }
 
+/// Handles user registration.
+///
+/// Generates a random salt, hashes the password with the salt,
+/// and stores the new user in the MongoDB collection. Returns
+/// a conflict error if the user already exists.
+///
+/// @param {Json<RegisterRequest>} register_request - The registration request data.
+/// @param {State<Client>} client - The MongoDB client state.
+/// @returns {Result<Json<User>, Conflict<&'static str>>} The newly created user or a conflict error.
 #[post("/register", data = "<register_request>")]
 pub async fn register(
     register_request: Json<RegisterRequest>,
@@ -108,11 +125,24 @@ pub async fn register(
     }
 }
 
+/// The index route handler.
+///
+/// Returns a simple greeting message.
+///
+/// @returns {&'static str} A greeting message.
+///
 #[get("/")]
 pub fn index() -> &'static str {
     "Hello, world!"
 }
 
+/// Initializes the MongoDB client and checks the connection.
+///
+/// Loads environment variables from `.env`, parses the MongoDB URI,
+/// creates and configures the MongoDB client, and pings the MongoDB server
+/// to ensure the connection is successful.
+///
+/// @returns {Client} A configured MongoDB client.
 pub async fn init_mongo() -> Client {
     dotenv().ok();
     let mongodb_uri = env::var("MONGODB_URI").expect("MONGODB_URI must be set in .env");
@@ -132,6 +162,12 @@ pub async fn init_mongo() -> Client {
     client
 }
 
+/// Initializes and configures the Rocket instance.
+///
+/// - Attaches MongoDB initialization as a fairing.
+/// - Mounts routes for index, login, and register.
+///
+/// @returns {rocket::Rocket<rocket::Build>} A configured Rocket instance.
 pub fn rocket() -> rocket::Rocket<rocket::Build> {
     rocket::build()
         .attach(AdHoc::on_ignite("MongoDB Init", |rocket| async {
