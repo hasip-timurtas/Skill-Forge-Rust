@@ -10,7 +10,7 @@ async fn test_register_success() {
         .await
         .expect("valid rocket instance");
 
-    // Rastgele bir e-posta adresi oluşturun
+    // Generate a random email address
     let random_number: u32 = rand::thread_rng().gen_range(1000..9999);
     let email = format!("new_user{}@example.com", random_number);
 
@@ -56,11 +56,11 @@ async fn test_login_success() {
         .await
         .expect("valid rocket instance");
 
-    // Rastgele bir e-posta adresi oluşturun
+    // Generate a random email address
     let random_number: u32 = rand::thread_rng().gen_range(1000..9999);
     let email = format!("new_user{}@example.com", random_number);
 
-    // İlk olarak kullanıcıyı kaydedelim
+    // First register the user
     let register_response = client
         .post("/register")
         .json(&json!({
@@ -77,7 +77,7 @@ async fn test_login_success() {
     let user: User = register_response.into_json().await.expect("valid user");
     assert_eq!(user.email, email);
 
-    // Şimdi giriş yapalım
+    // Then login
     let login_response = client
         .post("/login")
         .json(&json!({
