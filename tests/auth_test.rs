@@ -2,7 +2,8 @@ use rand::Rng;
 use rocket::http::Status;
 use rocket::local::asynchronous::Client;
 use rocket::serde::json::json;
-use user_login_api::{rocket, User};
+use skill_forge::rocket;
+use skill_forge::models::user::User;
 
 #[rocket::async_test]
 async fn test_register_success() {

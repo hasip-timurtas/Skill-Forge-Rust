@@ -2,5 +2,8 @@
 
 #[macro_use]
 extern crate rocket;
-pub mod api;
-pub use api::*;
+
+pub mod routes;
+pub mod services;
+pub mod models;
+pub mod server;

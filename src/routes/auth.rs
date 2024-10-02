@@ -1,38 +1,11 @@
-use dotenv::dotenv;
 use md5::{Digest, Md5};
-use mongodb::{bson::doc, options::ClientOptions, Client};
-use rand::thread_rng; // ThreadRng kullanımı için ekleyin
+use mongodb::{bson::doc, Client};
+use rand::thread_rng;
 use rand::Rng;
-use rocket::fairing::AdHoc;
-use rocket::response::status::{Conflict, Unauthorized};
-use rocket::serde::{json::Json, Deserialize, Serialize};
+use rocket::serde::{json::Json};
 use rocket::State;
-use std::env;
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct User {
-    pub email: String,
-    pub password: String,
-    pub name: String,
-    pub age: i32,
-    pub eth_address: String,
-    pub salt: String,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct LoginRequest {
-    pub email: String,
-    pub password: String,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct RegisterRequest {
-    pub email: String,
-    pub password: String,
-    pub name: String,
-    pub age: i32,
-    pub eth_address: String,
-}
+use rocket::response::status::{Conflict, Unauthorized};
+use crate::models::user::{User, LoginRequest, RegisterRequest};
 
 /// Handles user login.
 ///
@@ -48,11 +21,7 @@ pub async fn login(
     client: &State<Client>,
 ) -> Result<Json<User>, Unauthorized<&'static str>> {
     let users_collection = client.database("SkillForge").collection::<User>("users");
-
-    let filter = doc! {
-        "email": &login_request.email,
-    };
-
+    let filter = doc! { "email": &login_request.email };
     match users_collection.find_one(filter, None).await {
         Ok(Some(user)) => {
             let salt_str = &user.salt;
@@ -60,7 +29,6 @@ pub async fn login(
             let mut hasher = Md5::new();
             hasher.update(salted_password);
             let hashed_password = format!("{:x}", hasher.finalize());
-
             if hashed_password == user.password {
                 Ok(Json(user))
             } else {
@@ -87,34 +55,24 @@ pub async fn register(
     client: &State<Client>,
 ) -> Result<Json<User>, Conflict<&'static str>> {
     let users_collection = client.database("SkillForge").collection::<User>("users");
-
-    // Generate a random salt
     let salt: u32 = thread_rng().gen();
     let salt_str = salt.to_string();
-
-    // Hash the password with the salt
     let salted_password = format!("{}{}", register_request.password, salt_str);
     let mut hasher = Md5::new();
     hasher.update(salted_password);
     let hashed_password = format!("{:x}", hasher.finalize());
-
     let new_user = User {
         email: register_request.email.clone(),
         password: hashed_password,
         name: register_request.name.clone(),
         age: register_request.age,
         eth_address: register_request.eth_address.clone(),
-        salt: salt_str, // Save the salt
+        salt: salt_str,
     };
-
-    let filter = doc! {
-        "email": &register_request.email,
-    };
-
+    let filter = doc! { "email": &register_request.email };
     match users_collection.find_one(filter, None).await {
         Ok(Some(_)) => Err(Conflict("User already exists")),
         Ok(None) => {
-            // Store the user with the hashed password and salt
             users_collection
                 .insert_one(new_user.clone(), None)
                 .await
@@ -123,56 +81,4 @@ pub async fn register(
         }
         Err(_) => Err(Conflict("Failed to query database")),
     }
-}
-
-/// The index route handler.
-///
-/// Returns a simple greeting message.
-///
-/// @returns {&'static str} A greeting message.
-///
-#[get("/")]
-pub fn index() -> &'static str {
-    "Hello, world!"
-}
-
-/// Initializes the MongoDB client and checks the connection.
-///
-/// Loads environment variables from `.env`, parses the MongoDB URI,
-/// creates and configures the MongoDB client, and pings the MongoDB server
-/// to ensure the connection is successful.
-///
-/// @returns {Client} A configured MongoDB client.
-pub async fn init_mongo() -> Client {
-    dotenv().ok();
-    let mongodb_uri = env::var("MONGODB_URI").expect("MONGODB_URI must be set in .env");
-    let client_options = ClientOptions::parse(&mongodb_uri)
-        .await
-        .expect("Failed to parse MongoDB URI");
-    let client = Client::with_options(client_options).expect("Failed to initialize MongoDB client");
-
-    // Check MongoDB connection
-    client
-        .database("user_db")
-        .run_command(doc! {"ping": 1}, None)
-        .await
-        .expect("Failed to ping MongoDB");
-    println!("MongoDB connection successful");
-
-    client
-}
-
-/// Initializes and configures the Rocket instance.
-///
-/// - Attaches MongoDB initialization as a fairing.
-/// - Mounts routes for index, login, and register.
-///
-/// @returns {rocket::Rocket<rocket::Build>} A configured Rocket instance.
-pub fn rocket() -> rocket::Rocket<rocket::Build> {
-    rocket::build()
-        .attach(AdHoc::on_ignite("MongoDB Init", |rocket| async {
-            let client = init_mongo().await;
-            rocket.manage(client)
-        }))
-        .mount("/", routes![index, login, register])
 }
