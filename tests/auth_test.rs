@@ -18,7 +18,6 @@ async fn test_protected_route_without_token() {
     // Expect unauthorized status
     assert_eq!(response.status(), Status::Unauthorized);
 }
-return
 
 #[rocket::async_test]
 async fn test_register_success() {
