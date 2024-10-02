@@ -4,6 +4,21 @@ use rocket::local::asynchronous::Client;
 use rocket::serde::json::json;
 use skill_forge::server::rocket;
 use skill_forge::models::user::User;
+// use skill_forge::services::auth::Claims;
+
+#[rocket::async_test]
+async fn test_protected_route_without_token() {
+    let client = Client::tracked(skill_forge::server::rocket())
+        .await
+        .expect("valid rocket instance");
+
+    // Send a request without any token
+    let response = client.get("/protected").dispatch().await;
+
+    // Expect unauthorized status
+    assert_eq!(response.status(), Status::Unauthorized);
+}
+return
 
 #[rocket::async_test]
 async fn test_register_success() {
@@ -31,6 +46,7 @@ async fn test_register_success() {
     let user: User = response.into_json().await.expect("valid user");
     assert_eq!(user.email, email);
 }
+
 #[rocket::async_test]
 async fn test_register_existing_user() {
     let client = Client::tracked(rocket())
