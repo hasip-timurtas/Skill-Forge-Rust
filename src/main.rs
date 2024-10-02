@@ -1,5 +1,7 @@
+use skill_forge::server::rocket;
+
 #[rocket::main]
 async fn main() -> Result<(), rocket::Error> {
-    let _rocket = skill_forge::rocket().launch().await?;
+    let _rocket = rocket().launch().await?;
     Ok(())
 }

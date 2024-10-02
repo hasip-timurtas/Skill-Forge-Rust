@@ -2,10 +2,18 @@ use md5::{Digest, Md5};
 use mongodb::{bson::doc, Client};
 use rand::thread_rng;
 use rand::Rng;
-use rocket::serde::{json::Json};
+use rocket::serde::{json::Json, Deserialize, Serialize};
 use rocket::State;
 use rocket::response::status::{Conflict, Unauthorized};
+use jsonwebtoken::{encode, Header, EncodingKey};
+use std::env;
 use crate::models::user::{User, LoginRequest, RegisterRequest};
+
+#[derive(Debug, Serialize, Deserialize)]
+struct Claims {
+    sub: String,
+    exp: usize,
+}
 
 /// Handles user login.
 ///
@@ -19,9 +27,11 @@ use crate::models::user::{User, LoginRequest, RegisterRequest};
 pub async fn login(
     login_request: Json<LoginRequest>,
     client: &State<Client>,
-) -> Result<Json<User>, Unauthorized<&'static str>> {
+) -> Result<Json<(User, String)>, Unauthorized<&'static str>> {
     let users_collection = client.database("SkillForge").collection::<User>("users");
+
     let filter = doc! { "email": &login_request.email };
+
     match users_collection.find_one(filter, None).await {
         Ok(Some(user)) => {
             let salt_str = &user.salt;
@@ -29,8 +39,20 @@ pub async fn login(
             let mut hasher = Md5::new();
             hasher.update(salted_password);
             let hashed_password = format!("{:x}", hasher.finalize());
+
             if hashed_password == user.password {
-                Ok(Json(user))
+                // Generate JWT
+                let expiration = 3600; // 1 hour expiration
+                let claims = Claims {
+                    sub: user.email.clone(),
+                    exp: (chrono::Utc::now().timestamp() as usize) + expiration,
+                };
+                let secret = env::var("JWT_SECRET").expect("JWT_SECRET must be set");
+                let token = encode(&Header::default(), &claims, &EncodingKey::from_secret(secret.as_ref()))
+                    .map_err(|_| Unauthorized("Failed to generate token"))?;
+
+                // Return user data and JWT token
+                Ok(Json((user, token)))
             } else {
                 Err(Unauthorized("Invalid email or password"))
             }
