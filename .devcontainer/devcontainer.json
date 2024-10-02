@@ -1,0 +1,9 @@
+{
+    "name": "Rust Dev Environment",
+    "dockerFile": "Dockerfile",
+    "settings": {
+      "terminal.integrated.shell.linux": "/bin/bash"
+    },
+    "postCreateCommand": "rustup default stable"
+  }
+  
